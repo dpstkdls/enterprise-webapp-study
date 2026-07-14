@@ -1,5 +1,5 @@
 ---
-name: 작업
+name: 기본 작업
 about: 기본 작업 단위
 labels: ""
 ---
