@@ -94,7 +94,7 @@
 | 4 | [docs/phase-4.md](docs/phase-4.md) | 슬라이스 2개 통짜 구현 — `metrics`(WebSocket), `alerts`(BullMQ) + cross-cutting 캐싱 |
 | 5 | [docs/phase-5.md](docs/phase-5.md) | 품질 게이트 완성 (E2E, 파이프라인, release-please) |
 | 6 | [docs/phase-6.md](docs/phase-6.md) | 배포 + 관측성 (Docker, HTTPS, graceful shutdown, Grafana) |
-| 7 | [docs/phase-7.md](docs/phase-7.md) | (선택) 심화 (audit log, k6, k8s, 2FA, preview 환경) |
+| 7 | [docs/phase-7.md](docs/phase-7.md) | (선택) 심화 (audit log, k6, k8s, 2FA, preview 환경, tRPC 전환 비교) |
 
 ### 페이즈 진행 루프 (고정)
 
