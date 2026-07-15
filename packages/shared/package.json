@@ -3,7 +3,6 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"build": "tsc",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
@@ -12,10 +11,7 @@
 		"typescript": "~6.0.3"
 	},
 	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
-		}
+		".": "./src/index.ts"
 	},
 	"dependencies": {
 		"zod": "^4.4.3"
