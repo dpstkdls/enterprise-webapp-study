@@ -1,0 +1,11 @@
+{
+  "name": "@ews/api",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo '@ews/api: build placeholder (#3에서 tsc로 교체)'"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0"
+  }
+}

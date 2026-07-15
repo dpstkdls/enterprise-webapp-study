@@ -1,0 +1,8 @@
+{
+  "name": "@ews/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
