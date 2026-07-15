@@ -1,9 +1,9 @@
 {
-	"extends": "@ews/tsconfig/base.json",
+	"extends": "@ews/tsconfig/node.json",
 	"compilerOptions": {
-		"module": "esnext",
-		"moduleResolution": "bundler",
-		"noEmit": true
+		"rootDir": "src",
+		"outDir": "dist",
+		"declaration": true
 	},
 	"include": ["src"]
 }
