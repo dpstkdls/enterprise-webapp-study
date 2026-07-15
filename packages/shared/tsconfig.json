@@ -1,9 +1,7 @@
 {
 	"extends": "@ews/tsconfig/node.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
-		"declaration": true
+		"noEmit": true
 	},
 	"include": ["src"]
 }
