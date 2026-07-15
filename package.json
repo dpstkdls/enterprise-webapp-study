@@ -6,7 +6,7 @@
 		"build": "turbo build",
 		"dev": "turbo dev",
 		"lint": "biome check .",
-		"lint:fix": "biome check . --write .",
+		"lint:fix": "biome check --write .",
 		"typecheck": "turbo run typecheck"
 	},
 	"packageManager": "pnpm@10.13.1",
