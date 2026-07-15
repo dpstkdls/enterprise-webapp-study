@@ -1,16 +1,20 @@
 {
-  "name": "enterprise-webapp-study",
-  "private": true,
-  "version": "1.0.0",
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "lint": "biome check .",
-    "lint:fix": "biome check . --write ."
-  },
-  "packageManager": "pnpm@10.13.1",
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.3",
-    "turbo": "^2.10.5"
-  }
+	"name": "enterprise-webapp-study",
+	"private": true,
+	"version": "1.0.0",
+	"scripts": {
+		"build": "turbo build",
+		"dev": "turbo dev",
+		"lint": "biome check .",
+		"lint:fix": "biome check . --write .",
+		"typecheck": "turbo run typecheck"
+	},
+	"packageManager": "pnpm@10.13.1",
+	"engines": {
+		"node": ">=22"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.3",
+		"turbo": "^2.10.5"
+	}
 }

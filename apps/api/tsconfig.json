@@ -1,0 +1,7 @@
+{
+	"extends": "@ews/tsconfig/node.json",
+	"compilerOptions": {
+		"rootDir": "src"
+	},
+	"include": ["src"]
+}

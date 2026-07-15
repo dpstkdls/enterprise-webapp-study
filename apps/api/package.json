@@ -1,11 +1,21 @@
 {
-  "name": "@ews/api",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "echo '@ews/api: build placeholder (#3에서 tsc로 교체)'"
-  },
-  "dependencies": {
-    "fastify": "^5.0.0",
-    "fastify-plugin": "^5.0.0"
-  }
+	"name": "@ews/api",
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"fastify": "^5.10.0",
+		"fastify-plugin": "^5.0.0"
+	},
+	"devDependencies": {
+		"@ews/tsconfig": "workspace:*",
+		"@types/node": "^24.13.3",
+		"tsx": "^4.23.1",
+		"typescript": "~6.0.3"
+	}
 }
