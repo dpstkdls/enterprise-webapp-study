@@ -95,6 +95,7 @@
 | 5 | [docs/phase-5.md](docs/phase-5.md) | 품질 게이트 완성 (E2E, 파이프라인, release-please) |
 | 6 | [docs/phase-6.md](docs/phase-6.md) | 배포 + 관측성 (Docker, HTTPS, graceful shutdown, Grafana) |
 | 7 | [docs/phase-7.md](docs/phase-7.md) | (선택) 심화 (audit log, k6, k8s, 2FA, preview 환경, tRPC 전환 비교) |
+| 8 | [docs/phase-8.md](docs/phase-8.md) | (선택) 관리자 웹앱 추가 — `packages/ui` 추출, 공통 컴포넌트/설정을 멀티 앱에서 관리 |
 
 ### 페이즈 진행 루프 (고정)
 
