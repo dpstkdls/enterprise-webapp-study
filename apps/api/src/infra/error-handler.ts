@@ -1,7 +1,7 @@
 import { STATUS_CODES } from "node:http";
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
-import { AppError, type ErrorResponse } from "./errors.js";
+import { AppError, type ErrorResponse } from "./errors";
 
 const problem = (
 	req: FastifyRequest,
