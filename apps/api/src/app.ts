@@ -1,12 +1,9 @@
 import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
-import { healthRoute } from "./features/health/health.routes.js";
-import configPlugin from "./infra/config.js";
-import {
-	AppErrorHandler,
-	NotFoundErrorHandler,
-} from "./infra/error-handler.js";
-import { loggerOptions } from "./infra/logger.js";
+import { healthRoute } from "./features/health/health.routes";
+import configPlugin from "./infra/config";
+import { AppErrorHandler, NotFoundErrorHandler } from "./infra/error-handler";
+import { loggerOptions } from "./infra/logger";
 
 const buildApp = () => {
 	const fastify = Fastify({
