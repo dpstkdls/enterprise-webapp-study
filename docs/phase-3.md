@@ -23,12 +23,14 @@ apps/web/src/
 - servers 슬라이스: 목록/등록/수정 UI — 백엔드 `features/servers`와 1:1 대응
 - cross-origin 정면 돌파: `trustedOrigins`, CORS, 쿠키 sameSite — 뭐가 왜 깨졌는지 기록
 - Tailwind + shadcn/ui로 대시보드 레이아웃
-- CI에 프론트 빌드 + codegen 최신성 검증(생성 파일 diff 체크) 추가
+- 프론트 테스트: Vitest + React Testing Library 컴포넌트 테스트, MSW로 API mocking — 라우트 가드(비로그인 리다이렉트), servers 목록/폼(로딩·에러·검증 실패) 위주
+- CI에 프론트 빌드 + web test 스테이지 + codegen 최신성 검증(생성 파일 diff 체크) 추가
 
 ## 완료 기준
 
 - 별도 포트 프론트에서 로그인→org 전환→서버 목록 CRUD 동작 (= servers 슬라이스 end-to-end 완성)
 - API 스키마 변경이 프론트 컴파일 에러로 잡힘
+- 프론트 테스트가 실서버 없이(MSW) CI에서 통과
 - 셀프 점검: 백엔드 `features/servers`와 프론트 `features/servers`가 같은 기능 경계를 갖는가
 
 ## 구현 전 던져야 할 질문
@@ -41,6 +43,7 @@ apps/web/src/
 6. OpenAPI codegen이 보장하는 것과 보장 못 하는 것은? (스키마 거짓말 시나리오)
 7. 파일 기반 라우팅의 장단점은? 어떤 규모부터 이득인가?
 8. 프론트에서 기능별 폴더(features/)와 종류별 폴더(components/, hooks/)의 트레이드오프는? 라우트 파일을 얇게 유지하는 이유는?
+9. 프론트 컴포넌트 테스트는 뭘 검증할 때 가치 있나? (구현 디테일 vs 사용자 관점 동작) MSW mock이 실제 API와 어긋나는 것(스키마 드리프트)은 뭘로 막나 — codegen 타입과의 관계는?
 
 ## 이해도 체크 (퀴즈)
 
@@ -51,7 +54,7 @@ Phase 3 학습 끝났어. 아래 주제로 퀴즈 5~7문제 내줘.
 
 주제: SPA 인증 저장 위치와 XSS/CSRF, CORS preflight 조건과 credentials,
 origin/sameSite 정확한 규칙, TanStack Query 캐시 무효화, 클라 가드 vs 서버 검증,
-OpenAPI codegen의 보장 범위
+OpenAPI codegen의 보장 범위, 컴포넌트 테스트 범위와 MSW mock의 한계
 ```
 
 7할 미만이면 재학습 후 다음 페이즈.

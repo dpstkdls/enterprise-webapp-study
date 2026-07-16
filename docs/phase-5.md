@@ -4,6 +4,7 @@
 
 - Playwright E2E: 가입→팀 생성→서버 등록→대시보드 확인 핵심 플로우 → CI 최종 스테이지로
 - 파이프라인 완성형: lint → typecheck → unit → integration(서비스 컨테이너) → E2E → build (+ gitleaks, pnpm audit)
+- 커버리지 리포트(vitest --coverage) 붙여 unit/integration/E2E 비율 실측 — 질문 1의 답을 데이터로. 커버리지 %를 게이트로 강제할지는 스스로 결정하고 근거 기록
 - release-please 도입: conventional commits → 자동 버전 태그 + CHANGELOG + GitHub Release
 
 ## 완료 기준
