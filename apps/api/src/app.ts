@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import Fastify from "fastify";
 import { healthRoute } from "./features/health/health.routes.js";
 import configPlugin from "./infra/config.js";
+import {
+	AppErrorHandler,
+	NotFoundErrorHandler,
+} from "./infra/error-handler.js";
 import { loggerOptions } from "./infra/logger.js";
 
 const buildApp = () => {
@@ -16,6 +20,9 @@ const buildApp = () => {
 		reply.header("x-request-id", req.id);
 		done();
 	});
+
+	fastify.setErrorHandler(AppErrorHandler);
+	fastify.setNotFoundHandler(NotFoundErrorHandler);
 
 	fastify.register(configPlugin);
 	fastify.register(healthRoute);
