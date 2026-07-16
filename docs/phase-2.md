@@ -14,10 +14,11 @@ auth도 슬라이스: `features/auth/`에 betterAuth 인스턴스 + 설정 + hoo
 6. **계정 만료일**: `user.additionalFields.expiresAt` + before hook 거부 — built-in 없는 기능을 hook으로 확장하는 패턴 정리
 7. **OAuth**: GitHub → Google, redirect 체인 네트워크 탭 추적, credential↔OAuth account linking 확인
 8. **멀티테넌시**: organization plugin — 팀 생성/초대, 서버 리소스를 org 스코프로 격리, 다른 org 데이터 접근 시 404/403
+9. **테스트**: 내가 쓴 코드만 — 계정 만료 before hook·잠금 판정 로직 unit 테스트, 가입→로그인→보호 라우트 접근 integration 테스트, org 격리 integration 테스트(다른 org 리소스 404/403). better-auth 내부 동작은 테스트하지 않음
 
 ## 완료 기준
 
-- 위 8개 스텝 전부 + org 격리 integration 테스트
+- 위 9개 스텝 전부, 테스트는 CI에서 통과
 
 ## 구현 전 던져야 할 질문
 
@@ -30,6 +31,7 @@ auth도 슬라이스: `features/auth/`에 betterAuth 인스턴스 + 설정 + hoo
 7. account linking에서 "이메일이 같으면 자동 연결"이 위험해지는 조건은? (provider의 이메일 검증 여부)
 8. RBAC의 한계는? 어떤 요구사항이 오면 ABAC로 넘어가야 하나?
 9. 멀티테넌시에서 org 격리를 미들웨어에서 할 때와 쿼리(WHERE)에서 할 때 각각 뭘 놓칠 수 있나?
+10. 외부 라이브러리가 대부분을 소유한 기능에서 "내 코드"의 테스트 경계는 어디인가? 라이브러리 내부 동작까지 테스트하면 뭐가 문제인가?
 
 ## 이해도 체크 (퀴즈)
 
@@ -40,7 +42,8 @@ Phase 2(better-auth 인증) 학습 끝났어. 아래 주제로 퀴즈 7~10문제
 
 주제: 세션 vs JWT, 쿠키 보안 속성과 대응 공격(XSS/CSRF), sliding session 메커니즘,
 패스워드 해싱, rate limit vs lockout과 잠금 DoS, OAuth code flow와 state/PKCE,
-account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리
+account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
+인증 기능의 테스트 경계(내 코드 vs 라이브러리)
 ```
 
 7할 미만이면 재학습 후 다음 페이즈. 인증은 특히 — 애매하게 아는 상태로 넘어가지 말 것.
