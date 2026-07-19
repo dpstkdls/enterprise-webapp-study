@@ -13,7 +13,7 @@ const connectDbPlugin: FastifyPluginAsync = async (fastify, _opts) => {
 	const pool = new Pool({
 		connectionString: fastify.config.DATABASE_URL,
 	});
-	const db = drizzle(pool);
+	const db = drizzle(pool, { casing: "snake_case" });
 
 	await pool.query("SELECT 1"); // Test the connection
 
