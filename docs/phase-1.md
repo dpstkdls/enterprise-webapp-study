@@ -79,3 +79,39 @@ Testcontainers vs mock 판단 기준
 - `requestId`는 요청 소속 — 에러 객체가 아니라 핸들러가 `req.id`에서 주입
 - 규격 강제는 타입 선언만으로 부족 — 모든 분기가 생성 함수 하나(`problem()`)를 통과하게 해야 구조적으로 이탈 불가
 - 에러 규격은 RFC 9457 채택 — 근거는 [ADR-0007](adr/0007-rfc9457-error-response.md)
+
+### 2026-07-21 — 구현 실습 (#37 #38) + 이해도 체크 퀴즈
+
+**구현하며 배운 것 / 막혔던 것 (#37 servers CRUD, #38 테스트):**
+
+- response 스키마는 문서용이 아니라 **직렬화 계약** — serializerCompiler가 스키마로 응답을 safeParse. `z.string()` 자리에 `Date` 반환 → typecheck가 먼저 잡음 (type provider가 스키마에서 handler 반환 타입을 역산)
+- `noUncheckedIndexedAccess`에서 `arr[0]`은 `T | undefined` — `length` 체크는 타입을 못 좁힘, 구조 분해 + `if (!x)` 가드로 404 판별과 타입 좁히기를 한 번에
+- PATCH의 id는 body가 아니라 URL — 숨겨도 보안 이득 없음 (HTTPS는 path도 암호화, 진짜 방어는 인가). 리소스 식별은 URL 소관
+- 모든 필드 optional인 PATCH에 빈 `{}` → drizzle "No values to set" 500. 클라이언트 입력으로 500이 나면 검증 경계의 구멍 — zod `.refine`으로 400 처리
+- `status` 0~1 제한이 zod에만 있고 DB엔 CHECK 제약 없음 — 검증 경계를 우회한 경로(repository 직접 호출)는 아무도 못 막음. 방어를 어느 레이어에 둘지는 결정 사항
+- Testcontainers는 Docker 대체가 아니라 Docker를 테스트 생명주기에 맞춰 코드로 제어하는 도구 — 격리(매번 빈 컨테이너 + 마이그레이션부터), 로컬=CI 동일 경로, 랜덤 포트
+- testcontainers@12는 Node >=22.19 요구 (undici@8) — 22.17.1 유지하려면 v11 (API 동일)
+- 테스트 추가 기준: "이 테스트가 실패하면 어떤 버그를 잡은 건가"에 답 못 하면 안 씀. invalid 값 테스트는 레이어별 소관 — 타입 오류는 TS, 규칙 위반은 route(zod), 제약 위반은 DB
+
+**퀴즈 결과 (평균 5.0/10 — 기준 7할 미달, 취약 주제 재학습 필요):**
+
+| 주제 | 점수 |
+|---|---|
+| 슬라이스 vs 레이어드 트레이드오프 | 8 |
+| 슬라이스 내 파일 분리 실익 | 6 |
+| Fastify plugin/decorate 캡슐화 | 0 |
+| Drizzle 마이그레이션 수명주기 | 5 |
+| zod 컴파일/런타임 보장 구분 | 4 |
+| 에러 규격 + 요청 ID | 6 |
+| Testcontainers vs mock | 6 |
+
+**취약 주제 재학습 노트:**
+
+1. **Fastify 캡슐화** — decorate/hook은 자기 컨텍스트+자손에게만 보임. `register()`가 컨텍스트를 새로 파고 `fp()`는 부모에 눌러붙음. 판단 기준: "모든 슬라이스가 봐야 하나?" yes → fp (db/config/logger), no → 기본 register (라우트, 슬라이스 전용 hook). fp 남용 = 전역 오염, 미사용 = 간헐적 undefined. app.ts의 register 순서가 사실상 의존성 그래프. → scratch로 케이스 토글 + `hasDecorator` 확인 실습 남음
+2. **zod의 이중 보장** — "zod는 런타임에 **데이터**를, 파생 타입은 컴파일에 **내 코드**를 검증한다". `.int().min().max()`는 타입에 안 남음 (추론은 그냥 `number`)
+3. **마이그레이션 메커니즘** — 적용된 파일 수정은 에러가 아니라 **조용한 분기**: 기존 DB는 무시(이력 기준), 새 DB만 실행 → 환경별 스키마 drift. generate는 SQL이 아니라 `meta/` snapshot 기준 diff. CI 방어: fresh DB migrate(#38 integration이 수행) + `db:generate` 후 `git diff --exit-code`
+4. **에러 응답의 계약 필드** — 클라이언트 분기는 `code` + `status` 클래스. title/메시지는 사람용 문자열이라 계약 아님 (문구 수정이 프론트 장애가 되는 길). requestId는 `x-request-id` 헤더로 이어받고 응답 헤더로도 반환 — 시스템 관통 추적의 연결 고리
+
+**강한 곳:** 구조 트레이드오프 감각, 공유 코드 승격 기준("동시에 변경돼야 하는가" = DRY의 본질)
+
+**다음 단계:** 취약 4개 재학습 → 재퀴즈(4문제) → 7할 이상 시 Phase 2 진행
