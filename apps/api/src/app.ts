@@ -6,6 +6,7 @@ import {
 	validatorCompiler,
 } from "fastify-type-provider-zod";
 import { healthRoute } from "./features/health/health.routes";
+import { serversRoute } from "./features/servers/servers.route";
 import configPlugin from "./infra/config";
 import connectDbPlugin from "./infra/db";
 import { AppErrorHandler, NotFoundErrorHandler } from "./infra/error-handler";
@@ -36,6 +37,7 @@ const buildApp = () => {
 	fastify.register(swaggerPlugin);
 
 	fastify.register(healthRoute);
+	fastify.register(serversRoute);
 	return fastify;
 };
 
