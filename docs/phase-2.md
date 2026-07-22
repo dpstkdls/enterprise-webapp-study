@@ -95,3 +95,17 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 
 - sign-up 500: `drizzleAdapter(db, { provider: "pg" })`에 **schema 미전달** — 우리 drizzle 클라이언트는 schema 없이 생성되므로 adapter가 user 모델을 못 찾음. `schema: authSchema` 명시로 해결. auth 슬라이스가 자기 스키마를 자기 adapter에 주입하는 게 의존 방향도 맞음 (infra가 슬라이스 스키마를 알면 역전)
 - better-auth는 라우터 내장 — 캐치올 하나가 전부 커버, plugin이 라우트도 추가함. 단 우리 zod provider를 안 거치니 /docs에 안 나옴. 내부 호출용 `auth.api.*`가 따로 있음 (org preHandler에서 쓸 것)
+
+### 2026-07-22 — sliding session (#57)
+
+**관찰 (expiresIn: 30s / updateAge: 10s로 실험 후 원복):**
+
+- updateAge 경과 전 get-session → expiresAt **그대로**, 경과 후 요청 → **지금+expiresIn으로 연장**. 갱신 트리거는 시간이 아니라 **요청** — 계속 쓰면 안 죽고, 방치하면 죽는 게 sliding의 정체
+- expiresIn 경과 후 → get-session null (만료)
+
+**Q3 답 — expiresIn과 updateAge의 관계:**
+
+- expiresIn = 세션 수명, updateAge = 그 수명을 미는 행위의 **빈도 제한(스로틀)**. `updateAge < expiresIn`이어야 sliding 성립
+- `updateAge: 0` → 매 요청 갱신 = 요청당 session 테이블 UPDATE — 읽기 경로에 쓰기가 끼어드는 오버헤드. cookie cache가 이 비용을 건너뛰는 장치
+- `updateAge === expiresIn` → 갱신 자격이 생기는 순간이 곧 만료 순간 — sliding 소멸, **절대 만료**로 동작
+- 실험 설정은 코드에 안 남김 — 기본값(7일/1일) 복귀, 지식은 로그가 소유
