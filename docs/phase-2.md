@@ -51,3 +51,21 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 ## 학습 로그
 
 <!-- 배운 것 / 막혔던 것 / 퀴즈 결과 -->
+
+### 2026-07-22 — auth 부트스트랩 (#55)
+
+**Q1 답 — 세션 vs JWT:**
+
+- 세션 = "서버가 기억"이라 취소가 쉽고, JWT = "클라이언트가 증명"이라 취소가 안 된다. 인증 라이브러리의 기능 대부분(로그아웃, ban, 기기별 세션 해제, sliding session, org 전환)은 **취소하거나 바꾸는 기능** — 서버 상태 없이는 성립 안 함. better-auth가 세션 기본인 이유
+- JWT로 revoke를 풀려면 블랙리스트 = 상태를 다시 들이게 됨 — 세션 비용은 그대로 내면서 즉시성만 잃은 구조
+- "세션은 확장 안 됨"은 메모리 세션 시절 오해 — DB 세션이면 앱 서버는 무상태라 수평 확장 문제없음. 조회 병목은 cookie cache(단기 서명 쿠키로 DB 조회 생략) / secondaryStorage(Redis)로 완화. 인스타급도 패턴은 쿠키 세션 — 그 규모에선 라이브러리가 아니라 저장소를 갈아끼움
+- 현대의 정리: 승부가 아니라 **배치 문제** — 신뢰 경계 안(브라우저↔자사 백엔드)은 세션, 경계를 넘을 때(OIDC, 서비스 간)는 JWT, JWT 수명은 항상 짧게. 실무는 하이브리드로 수렴: 취소 가능한 앵커(refresh token/세션) + 짧은 무상태 증명(access token/cookie cache)
+
+**배운 것 / 막혔던 것:**
+
+- better-auth 인스턴스는 db가 필요 → 앱은 `createAuth(fastify.db)` 팩토리로 주입, CLI는 env에서 자기 db를 만드는 `auth.config.ts` 사용 — drizzle-kit과 drizzle.config.ts의 관계와 동일한 구조. **앱 코드는 auth.config를 절대 import 안 함** (커넥션 이중화 + cwd 의존 유입)
+- 생성 체인: `auth:generate`(설정→schema TS) → `db:generate`(TS→SQL) → `db:migrate`(적용). 역할이 달라 대체 불가. 클론 후 셋업은 migrate만 — generate 산출물은 전부 커밋되므로. "산출물은 손대지 않고 원본을 고친다"가 한 층 위에서 반복됨 (auth.schema.ts의 원본은 auth.ts 설정)
+- CLI 기본 산출물명 `auth-schema.ts`는 drizzle glob(`*.schema.ts`)에 **매칭 안 됨** — 에러 없이 무시되는 조용한 함정. `--output`으로 강제
+- `process.loadEnvFile` 상대경로는 파일 위치가 아니라 cwd 기준 — package.json script로 감싸 cwd를 고정하는 게 이 레포 컨벤션 (drizzle.config.ts와 동일)
+- Fastify 마운트: better-auth handler는 Web Request/Response — 변환 시 **응답 헤더 복사(특히 set-cookie)를 빠뜨리면** 로그인해도 세션 쿠키가 클라이언트에 영영 안 감. 원인 모를 인증 실패의 씨앗
+- `tsx watch`는 감시자+서버 2프로세스 — 패턴 kill로 부모만 죽이면 자식이 좀비로 포트 점유. 정리는 포트 기준(`lsof -ti :3000 | xargs kill`)
