@@ -69,3 +69,29 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 - `process.loadEnvFile` 상대경로는 파일 위치가 아니라 cwd 기준 — package.json script로 감싸 cwd를 고정하는 게 이 레포 컨벤션 (drizzle.config.ts와 동일)
 - Fastify 마운트: better-auth handler는 Web Request/Response — 변환 시 **응답 헤더 복사(특히 set-cookie)를 빠뜨리면** 로그인해도 세션 쿠키가 클라이언트에 영영 안 감. 원인 모를 인증 실패의 씨앗
 - `tsx watch`는 감시자+서버 2프로세스 — 패턴 kill로 부모만 죽이면 자식이 좀비로 포트 점유. 정리는 포트 기준(`lsof -ti :3000 | xargs kill`)
+
+### 2026-07-22 — email/password 사이클 (#56)
+
+**관찰 기록:**
+
+- 가입→로그인→get-session→로그아웃 사이클 curl로 재현. 세션 쿠키:
+  `better-auth.session_token=토큰.서명; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax`
+  — `Secure` 없음은 baseURL이 http라서 (배포 시 https면 붙음). 쿠키 값이 `토큰.서명` 2부 구조 — 서명 검증이 DB 조회 전에 위조를 걸러줌
+- account.password는 `salt:hash` (scrypt) — 평문 없음 확인
+
+**Q2 답 — 쿠키 속성과 대응 공격:**
+
+- `httpOnly` → XSS: 스크립트가 쿠키를 못 읽음. **XSS = 훔쳐서 쓴다**
+- `secure` → 평문 HTTP 전송 차단 (중간자 도청)
+- `sameSite` → CSRF: 쿠키는 안 훔쳐짐 — 공격 사이트가 우리 서버로 요청을 날리면 브라우저가 쿠키를 자동 첨부하는 게 문제. **CSRF = 못 보지만 시킨다.** XSS와 방어 축이 다름
+- lax vs strict: lax는 최상위 GET 네비게이션(외부 링크 클릭 진입)에 쿠키 허용 — 링크 타고 와도 로그인 유지. strict는 그것도 차단 — 외부 진입 시 로그아웃처럼 보임. POST/fetch류 cross-site는 lax도 차단하므로 CSRF 방어는 유지 → lax가 기본값인 이유
+
+**Q4 답 — 느린 해시:**
+
+- salt = 사전계산(레인보우 테이블) 무효화, 같은 비번도 다른 해시
+- 느림 = DB 유출 후 오프라인 브루트포스 단가 상승 — sha256은 GPU 초당 수십억 회, scrypt는 메모리+연산 강제로 초당 수천 회. **salt는 "미리 계산 못 하게", 느림은 "지금 계산도 비싸게"** — 역할이 달라 둘 다 필요
+
+**막혔던 것:**
+
+- sign-up 500: `drizzleAdapter(db, { provider: "pg" })`에 **schema 미전달** — 우리 drizzle 클라이언트는 schema 없이 생성되므로 adapter가 user 모델을 못 찾음. `schema: authSchema` 명시로 해결. auth 슬라이스가 자기 스키마를 자기 adapter에 주입하는 게 의존 방향도 맞음 (infra가 슬라이스 스키마를 알면 역전)
+- better-auth는 라우터 내장 — 캐치올 하나가 전부 커버, plugin이 라우트도 추가함. 단 우리 zod provider를 안 거치니 /docs에 안 나옴. 내부 호출용 `auth.api.*`가 따로 있음 (org preHandler에서 쓸 것)
