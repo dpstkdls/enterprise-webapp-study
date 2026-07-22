@@ -5,6 +5,7 @@ import {
 	serializerCompiler,
 	validatorCompiler,
 } from "fastify-type-provider-zod";
+import { authRoute } from "./features/auth/auth.route";
 import { healthRoute } from "./features/health/health.routes";
 import { serversRoute } from "./features/servers/servers.route";
 import configPlugin from "./infra/config";
@@ -37,6 +38,7 @@ const buildApp = () => {
 	fastify.register(swaggerPlugin);
 
 	fastify.register(healthRoute);
+	fastify.register(authRoute);
 	fastify.register(serversRoute);
 	return fastify;
 };

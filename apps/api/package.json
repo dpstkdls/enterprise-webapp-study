@@ -9,12 +9,14 @@
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate"
+		"db:migrate": "drizzle-kit migrate",
+		"auth:generate": "npx @better-auth/cli generate --config src/features/auth/auth.config.ts --output src/features/auth/auth.schema.ts"
 	},
 	"dependencies": {
 		"@ews/shared": "workspace:*",
 		"@fastify/swagger": "^9.8.1",
 		"@fastify/swagger-ui": "^6.1.0",
+		"better-auth": "^1.6.23",
 		"drizzle-orm": "^0.45.2",
 		"fastify": "^5.10.0",
 		"fastify-plugin": "^6.0.0",
