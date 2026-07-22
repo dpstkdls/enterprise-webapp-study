@@ -24,7 +24,7 @@
 	},
 	"devDependencies": {
 		"@ews/tsconfig": "workspace:*",
-		"@testcontainers/postgresql": "^11.14.0",
+		"@testcontainers/postgresql": "^12.0.4",
 		"@types/node": "^24.13.3",
 		"@types/pg": "^8.20.0",
 		"drizzle-kit": "^0.31.10",
