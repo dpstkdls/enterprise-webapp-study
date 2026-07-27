@@ -144,3 +144,18 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 - 저장소 기본 memory — 멀티 인스턴스면 인스턴스별 카운터가 따로 놀아 `database`/`secondary-storage`(Redis)로 바꿔야 함
 - ban: `admin/ban-user`에 `banExpiresIn`(초) → `ban_expires` 기록. ban 상태 로그인은 **비번이 맞아도** `403 BANNED_USER`. 만료 후 로그인 200 — `banned` 플래그는 스케줄러가 아니라 **만료 후 접근 시점에 lazy clear** (DB만 보면 아직 banned=t여도 이미 풀린 상태일 수 있음)
 - 429는 IP가 주체라 메시지가 익명이고, 403 BANNED_USER는 계정이 주체라 메시지가 계정에 귀속 — 응답만 봐도 두 방어의 축 차이가 드러남
+
+### 2026-07-27 — 계정 만료일 (#60)
+
+**라이브러리 확장 패턴:**
+
+- built-in 없는 기능 = **additionalFields(스키마 확장) + hook(동작 확장)** 조합. 스키마만 늘리면 데이터일 뿐, hook이 붙어야 동작이 됨
+- hook은 2계층: `hooks.before/after`(HTTP 요청, 경로 기준) vs `databaseHooks`(데이터 모델 생명주기). 만료 거부는 `databaseHooks.session.create.before` 선택 — **비번 검증 통과 후** 실행이라 계정 존재가 안 새고, "만료 계정은 세션을 못 갖는다"가 본질이라 로그인 수단이 늘어도(OAuth) 자동 커버
+- `input: false` — 가입 body에 expiresAt 넣어도 무시(mass assignment 방지). 만료일 최초 설정은 ban 때처럼 시스템 밖(SQL)/관리자 경로만
+- 판정은 `auth.expiry.ts`의 순수 함수 `isAccountExpired(expiresAt, now)`로 분리 — null=무기한 규칙이 한 곳에 응집, #63에서 DB 없이 unit 테스트
+
+**막혔던 것:**
+
+- hook에서 `AppError`(RFC 9457) 던지면 안 됨 — hook은 better-auth handler **내부**에서 실행되고 예외도 거기서 잡힘. 모르는 타입이면 500. `APIError` 던져야 403+code로 변환. 에러 규격은 2개 공존: `/api/auth/*`는 better-auth 규격, 나머지가 RFC 9457 — **확장 코드는 호스트 라이브러리의 에러 규약을 따른다**
+- 닭-달걀 타입 문제 재방문: additionalFields 타입은 인스턴스 추론(`ReturnType`) 경유인데 hook은 그 인스턴스를 만드는 설정 객체 안 → `internalAdapter` 반환이 base User라 `expiresAt` 없음(TS2339). 해결: 같은 설정에서 생성된 `auth.schema.ts`의 `$inferSelect`로 타입 파생 캐스트 — 필드 추가 시 generate 체인만 돌리면 타입 자동 갱신. 손캐스트 아닌 single source 파생 ("산출물 아닌 원본"의 타입 버전)
+- curl 3케이스(과거→403 ACCOUNT_EXPIRED, 미래→200, NULL→200)는 통과했는데 타입은 깨져 있었음 — **런타임 검증만으론 CI 실패를 못 잡음**, `tsc --noEmit`이 로컬 루틴에 필요
