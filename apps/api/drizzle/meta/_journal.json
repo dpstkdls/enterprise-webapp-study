@@ -15,6 +15,13 @@
       "when": 1784700981713,
       "tag": "0001_cuddly_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784709790075,
+      "tag": "0002_amused_salo",
+      "breakpoints": true
     }
   ]
 }
