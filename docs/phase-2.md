@@ -128,3 +128,19 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 - `Auth` base 타입엔 role이 없음 — plugin 타입 확장은 인스턴스 추론 경유라 `ReturnType<typeof createAuth>` 사용
 - 헤더 변환 헬퍼 2번째 사용처 발생 → 승격. 단 utils/ 신설은 ADR-0008 위반(제2의 쓰레기장) — 사용처가 전부 auth라 `features/auth/auth.headers.ts`로. infra 승격은 타 슬라이스가 쓸 때
 - 가드 integration 테스트(401/403/200)는 #63에서 org 격리 테스트와 함께
+
+### 2026-07-27 — rate limit + 계정 잠금 (#59)
+
+**Q5 답 — rate limit vs lockout, 잠금 DoS:**
+
+- rate limit = **요청자(IP) 기준**, 성공/실패 무관하게 요청 횟수 자체를 셈 → 429, 창 지나면 자동 해제. lockout = **계정 기준**, 실패 횟수를 셈 → 계정 잠금. 공격자가 IP를 분산하면 rate limit은 뚫려도 lockout은 잡음 — 세는 축이 달라 상호 보완
+- 잠금 DoS: 계정 기준이라는 점이 역으로 무기가 됨 — 피해자 이메일로 고의 실패 반복 → 정당한 주인이 못 들어옴. 그래서 실무는 영구 잠금 대신 **기간제 잠금 + CAPTCHA + 본인 알림** 조합
+- better-auth의 "브루트포스 방어 2종"의 실체: rate limit은 자동, ban은 **관리자 수동 조치**. "실패 N회 → 자동 잠금"은 built-in 없음 — 필요하면 hook으로 직접 (스텝 6의 확장 패턴)
+
+**관찰:**
+
+- rate limit은 dev에서 기본 비활성 — `rateLimit: { enabled: true }` 한 줄이 전부. `/sign-in*`·`/sign-up*`·`/change-password*` 등엔 **내장 특수 규칙 10초/3회**(reset류는 60초/3회)가 이미 있어 customRules 불필요
+- 재현: 로그인 3회 401 → 4회째 `429` + `X-Retry-After: 10`, 창 경과 후 다시 받아줌. 카운터는 실패든 성공이든 요청 수 기준
+- 저장소 기본 memory — 멀티 인스턴스면 인스턴스별 카운터가 따로 놀아 `database`/`secondary-storage`(Redis)로 바꿔야 함
+- ban: `admin/ban-user`에 `banExpiresIn`(초) → `ban_expires` 기록. ban 상태 로그인은 **비번이 맞아도** `403 BANNED_USER`. 만료 후 로그인 200 — `banned` 플래그는 스케줄러가 아니라 **만료 후 접근 시점에 lazy clear** (DB만 보면 아직 banned=t여도 이미 풀린 상태일 수 있음)
+- 429는 IP가 주체라 메시지가 익명이고, 403 BANNED_USER는 계정이 주체라 메시지가 계정에 귀속 — 응답만 봐도 두 방어의 축 차이가 드러남
