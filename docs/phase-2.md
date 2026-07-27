@@ -109,3 +109,22 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 - `updateAge: 0` → 매 요청 갱신 = 요청당 session 테이블 UPDATE — 읽기 경로에 쓰기가 끼어드는 오버헤드. cookie cache가 이 비용을 건너뛰는 장치
 - `updateAge === expiresIn` → 갱신 자격이 생기는 순간이 곧 만료 순간 — sliding 소멸, **절대 만료**로 동작
 - 실험 설정은 코드에 안 남김 — 기본값(7일/1일) 복귀, 지식은 로그가 소유
+
+### 2026-07-23 — RBAC (#58)
+
+**Q8 답 — RBAC의 한계와 ABAC:**
+
+- RBAC 판정은 `allow(역할, 행위)` — **리소스가 인자에 없음.** "자기가 만든 서버만 삭제", "같은 org만 조회"처럼 주체↔리소스의 **관계**가 조건이 되는 순간 role로 표현 불가. ABAC은 `allow(주체 속성, 리소스 속성, 컨텍스트)`
+- 넘어갈 신호: 역할 조합 폭발 — 속성을 role 이름에 인코딩("org-A-admin"...)하기 시작하면 늦은 것
+- 실무 배치: 굵은 문지기는 RBAC(requireAdmin preHandler), 관계 규칙은 쿼리/서비스 레벨 속성 검사 — #62 org 격리가 사실상 ABAC
+
+**배운 것 / 막혔던 것:**
+
+- admin plugin 추가 → auth:generate 체인 첫 재실행. 0002: user에 role/banned/ban_reason/ban_expires, session에 impersonated_by — plugin이 스키마도 라우트도 늘림
+- **첫 admin 부트스트랩 문제**: admin 만드는 API는 admin 권한 필요 — 닭-달걀. 첫 발급은 시스템 밖(SQL/seed)에서, 이후는 API(`admin/create-user`)로
+- 가드를 `/api/auth/*` 캐치올에 붙이는 실수 — 로그인 라우트에 admin 가드가 걸려 데드락 (로그인하려면 세션 필요 ← 세션엔 로그인 필요). 가드는 보호 대상 라우트에만
+- `auth.api.*` 서버 내부 호출도 **headers를 넘겨야 함** — 요청자 신원을 쿠키로 판단. 우리 가드(규격 에러로 조기 차단) + better-auth 내부 검사(우회 불가 최종선)의 이중 구조
+- better-auth의 Origin 검사 = sameSite에 더한 CSRF 이중 방어. curl은 Origin을 안 보내 거부됨 → `-H 'origin: ...'`으로 통과. **위조 걱정의 답**: 공격 성립엔 "쿠키 + Origin 위조" 동시 필요한데, 브라우저(쿠키 자동 첨부)는 Origin을 거짓말 못 하고, curl(Origin 위조 자유)은 피해자 쿠키를 가질 방법이 없음 — 두 능력이 배타적
+- `Auth` base 타입엔 role이 없음 — plugin 타입 확장은 인스턴스 추론 경유라 `ReturnType<typeof createAuth>` 사용
+- 헤더 변환 헬퍼 2번째 사용처 발생 → 승격. 단 utils/ 신설은 ADR-0008 위반(제2의 쓰레기장) — 사용처가 전부 auth라 `features/auth/auth.headers.ts`로. infra 승격은 타 슬라이스가 쓸 때
+- 가드 integration 테스트(401/403/200)는 #63에서 org 격리 테스트와 함께

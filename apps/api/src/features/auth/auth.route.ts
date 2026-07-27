@@ -1,5 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { createAuth } from "./auth";
+import { requireAdmin } from "./auth.guards";
+import { toWebHeaders } from "./auth.headers";
 
 export const authRoute: FastifyPluginAsync = async (fastify) => {
 	const auth = createAuth(fastify.db);
@@ -8,11 +10,8 @@ export const authRoute: FastifyPluginAsync = async (fastify) => {
 		url: "/api/auth/*",
 		async handler(request, reply) {
 			const url = new URL(request.url, `http://${request.headers.host}`);
-			const headers = new Headers();
+			const headers = toWebHeaders(request);
 
-			for (const [key, value] of Object.entries(request.headers)) {
-				if (value) headers.append(key, value.toString());
-			}
 			const req = new Request(url, {
 				method: request.method,
 				headers,
@@ -26,4 +25,16 @@ export const authRoute: FastifyPluginAsync = async (fastify) => {
 			reply.send(response.body ? await response.text() : null);
 		},
 	});
+
+	fastify.get(
+		"/admin/users",
+		{ preHandler: requireAdmin(auth) },
+		async (request) => {
+			const users = await auth.api.listUsers({
+				query: {},
+				headers: toWebHeaders(request),
+			});
+			return users;
+		},
+	);
 };
