@@ -159,3 +159,45 @@ account linking 위험, RBAC 설계와 한계, org 단위 데이터 격리,
 - hook에서 `AppError`(RFC 9457) 던지면 안 됨 — hook은 better-auth handler **내부**에서 실행되고 예외도 거기서 잡힘. 모르는 타입이면 500. `APIError` 던져야 403+code로 변환. 에러 규격은 2개 공존: `/api/auth/*`는 better-auth 규격, 나머지가 RFC 9457 — **확장 코드는 호스트 라이브러리의 에러 규약을 따른다**
 - 닭-달걀 타입 문제 재방문: additionalFields 타입은 인스턴스 추론(`ReturnType`) 경유인데 hook은 그 인스턴스를 만드는 설정 객체 안 → `internalAdapter` 반환이 base User라 `expiresAt` 없음(TS2339). 해결: 같은 설정에서 생성된 `auth.schema.ts`의 `$inferSelect`로 타입 파생 캐스트 — 필드 추가 시 generate 체인만 돌리면 타입 자동 갱신. 손캐스트 아닌 single source 파생 ("산출물 아닌 원본"의 타입 버전)
 - curl 3케이스(과거→403 ACCOUNT_EXPIRED, 미래→200, NULL→200)는 통과했는데 타입은 깨져 있었음 — **런타임 검증만으론 CI 실패를 못 잡음**, `tsc --noEmit`이 로컬 루틴에 필요
+
+### 2026-07-27 — OAuth (GitHub → Google) + account linking (#61)
+
+**Q6 답 — authorization code flow:**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as 브라우저
+    participant S as 우리 서버 (better-auth)
+    participant G as Provider (GitHub/Google)
+    B->>S: POST /sign-in/social
+    S-->>B: authorize URL로 redirect (client_id, redirect_uri, state) + state 쿠키 심음
+    B->>G: 로그인 + 동의
+    G-->>B: 등록된 callback으로만 redirect (?code=임시교환권&state=)
+    B->>S: GET /callback/:provider?code&state
+    S->>S: state 3중 검증 (DB + URL + 쿠키)
+    Note over S,G: 뒷무대 — 브라우저 못 봄
+    S->>G: code + client_secret 제출
+    G-->>S: access_token
+    S->>G: 프로필 조회 (email, emailVerified)
+    S->>S: user/account 생성·연결 + 세션 생성 (#60 hook 발동 지점)
+    S-->>B: Set-Cookie 세션 + callbackURL로 redirect
+```
+
+- 구조 = **앞무대/뒷무대 분리**: 브라우저 경유 구간엔 공개 id와 단명 교환권(code)만, 진짜 값(client_secret, access_token)은 서버↔provider 직통에만. flow가 꼬여 보이는 이유 전부가 이 분리
+- 등록 3요소: 신원 만들기(OAuth App 등록) / 신원 표시·증명(client_id 공개, client_secret 비밀) / **code 배달지 잠금**(callback URL 화이트리스트 — redirect_uri 바꿔치기로 code 탈취 방어)
+- **state** = "flow를 시작한 브라우저 == callback으로 돌아온 브라우저" 를 쿠키로 묶는 끈. 막는 공격은 login CSRF — 공격자가 **자기 code**가 담긴 callback URL을 피해자에게 열게 해서 피해자 브라우저에 공격자 세션을 심는 것(이후 피해자가 저장하는 데이터를 공격자가 열람). callback 화이트리스트(내 code 도둑맞기)와 방어 방향이 반대
+- **PKCE** = client_secret을 가질 수 없는 클라이언트(모바일/백엔드 없는 SPA)용 일회용 즉석 secret. verifier 해시를 먼저 보내고 교환 때 원본 제출 — "시작한 놈 == 교환하는 놈" 증명
+
+**Q7 답 + linking 관찰:**
+
+- account 테이블이 provider 개념의 실체: user 1—N account, credential(비번)도 provider의 하나
+- GitHub 로그인 후 Google 로그인 → user 행 그대로, account 행만 추가 = **자동 linking**. 판정은 "이메일 일치 + provider가 그 이메일을 검증했는가"
+- 반대 방향 실험: 같은 이메일로 **비번 가입** 시도 → 422 USER_ALREADY_EXISTS. 비번 가입은 이메일 소유 증명이 없어서 — 자동 연결하면 이메일만 아는 아무나 계정 탈취(Q7의 위험 조건). **같은 "이메일 일치"라도 누가 검증했느냐로 연결/거부가 갈림.** OAuth user에 비번을 정당하게 붙이는 길은 세션 후 setPassword / 비번 재설정 — 둘 다 "소유 증명 후"
+- 검증 안 하는 provider의 이메일을 믿고 자동 연결하는 게 Q7의 사고 시나리오 — better-auth가 emailVerified 기반 + trustedProviders 옵션으로 통제하는 이유
+
+**막혔던 것 (전부 보안장치가 정상 작동한 것):**
+
+- **state_mismatch**: curl로 authorize URL 받아 브라우저에 붙여넣음 → sign-in/social 응답의 state **쿠키를 curl이 먹고 버림** → callback 브라우저에 쿠키 없음 → 거부. "URL 넘겨받아 여는" 행위가 구조적으로 login CSRF 공격과 구별 불가라 죽는 게 맞음. flow는 한 브라우저 안에서 시작·종료해야 함
+- **email_not_found**: GitHub **App**을 만들었음(OAuth App 아님). GitHub App은 scope 파라미터 무시하고 등록된 permission을 따르는데 기본 email 권한 없음 → 프로필 email null(private 설정) + /user/emails fallback도 거부. OAuth App으로 재등록해 해결
+- 로그인 성공 후 404: callbackURL "/"에 라우트 없음 — 에러 응답이 RFC 9457 규격 = better-auth 세계를 **벗어난 뒤**의 404라는 증거 (#60의 "에러 규격 2개 공존" 실물)
