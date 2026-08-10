@@ -29,6 +29,20 @@
       "when": 1785136298970,
       "tag": "0003_equal_starjammers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786345953569,
+      "tag": "0004_massive_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786346460543,
+      "tag": "0005_even_lockjaw",
+      "breakpoints": true
     }
   ]
 }

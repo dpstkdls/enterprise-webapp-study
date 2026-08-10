@@ -1,6 +1,6 @@
 import { APIError, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin } from "better-auth/plugins";
+import { admin, organization } from "better-auth/plugins";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { isAccountExpired } from "./auth.expiry";
 import * as authSchema from "./auth.schema";
@@ -13,7 +13,7 @@ export const createAuth = (db: NodePgDatabase<Record<string, unknown>>) =>
 		emailAndPassword: { enabled: true },
 		// dev는 기본 비활성. sign-in/sign-up 등엔 내장 특수 규칙(10초/3회)이 적용된다.
 		rateLimit: { enabled: true },
-		plugins: [admin()],
+		plugins: [admin(), organization()],
 		user: {
 			additionalFields: {
 				expiresAt: { type: "date", required: false, input: false },

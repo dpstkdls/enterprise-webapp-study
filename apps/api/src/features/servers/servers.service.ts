@@ -10,16 +10,18 @@ const serialize = <T extends { createdAt: Date; updatedAt: Date }>(row: T) => ({
 
 export const getServers = async (
 	db: NodePgDatabase<Record<string, unknown>>,
+	orgId: string,
 ) => {
-	const serversList = await list(db);
+	const serversList = await list(db, orgId);
 	return serversList.map(serialize);
 };
 
 export const getServer = async (
 	db: NodePgDatabase<Record<string, unknown>>,
+	orgId: string,
 	id: number,
 ) => {
-	const server = await getById(db, id);
+	const server = await getById(db, orgId, id);
 	if (!server) {
 		throw new AppError(
 			404,
@@ -32,9 +34,10 @@ export const getServer = async (
 
 export const createServer = async (
 	db: NodePgDatabase<Record<string, unknown>>,
+	orgId: string,
 	data: { hostname: string; ip: string; status: number },
 ) => {
-	const [createdServer] = await create(db, data);
+	const [createdServer] = await create(db, orgId, data);
 	if (!createdServer) {
 		throw new AppError(
 			500,
@@ -47,10 +50,11 @@ export const createServer = async (
 
 export const updateServer = async (
 	db: NodePgDatabase<Record<string, unknown>>,
+	orgId: string,
 	id: number,
 	data: { hostname?: string; ip?: string; status?: number },
 ) => {
-	const [modifiedServer] = await update(db, id, data);
+	const [modifiedServer] = await update(db, orgId, id, data);
 	if (!modifiedServer) {
 		throw new AppError(
 			404,
@@ -63,9 +67,10 @@ export const updateServer = async (
 
 export const removeServer = async (
 	db: NodePgDatabase<Record<string, unknown>>,
+	orgId: string,
 	id: number,
 ) => {
-	const [deletedServer] = await remove(db, id);
+	const [deletedServer] = await remove(db, orgId, id);
 	if (!deletedServer) {
 		throw new AppError(
 			404,
