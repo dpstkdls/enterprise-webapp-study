@@ -6,6 +6,7 @@ import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { organization } from "../auth/auth.schema";
 import { create, getById, list, remove, update } from "./servers.repository";
 
 let container: StartedPostgreSqlContainer;
@@ -25,6 +26,15 @@ beforeAll(async () => {
 	await migrate(db, { migrationsFolder: "./drizzle" });
 }, 60_000);
 
+beforeAll(async () => {
+	await db.insert(organization).values({
+		id: "org-123",
+		name: "Test Org",
+		slug: "test-org",
+		createdAt: new Date(),
+	});
+}, 60_000);
+
 afterAll(async () => {
 	await pool?.end();
 	await container?.stop();
@@ -33,37 +43,38 @@ afterAll(async () => {
 describe("서버 리스트 조회", () => {
 	it("생성, 단건 조회", async () => {
 		const created = first(
-			await create(db, {
+			await create(db, "org-123", {
 				hostname: "web-01",
 				ip: "10.0.0.1",
 				status: 1,
 			}),
 		);
 
-		const found = await getById(db, created.id);
+		const found = await getById(db, "org-123", created.id);
 
 		expect(found).toMatchObject({
 			hostname: "web-01",
 			ip: "10.0.0.1",
 			status: 1,
+			organizationId: "org-123",
 		});
 
 		expect(found?.createdAt).toBeInstanceOf(Date);
 	});
 
 	it("만든 행이 조회됨", async () => {
-		await create(db, {
+		await create(db, "org-123", {
 			hostname: "web-02",
 			ip: "10.0.0.2",
 			status: 1,
 		});
-		const rows = await list(db);
+		const rows = await list(db, "org-123");
 		expect(rows.some((row) => row.hostname === "web-02")).toBe(true);
 	});
 
 	it("부분 update후 조회", async () => {
 		const created = first(
-			await create(db, {
+			await create(db, "org-123", {
 				hostname: "web-03",
 				ip: "10.0.0.3",
 				status: 1,
@@ -71,12 +82,15 @@ describe("서버 리스트 조회", () => {
 		);
 		await new Promise((r) => setTimeout(r, 10)); // updatedAt 밀리초 차이 보장
 
-		const updated = first(await update(db, created.id, { status: 0 }));
+		const updated = first(
+			await update(db, "org-123", created.id, { status: 0 }),
+		);
 
 		expect(updated).toMatchObject({
 			hostname: "web-03",
 			ip: "10.0.0.3",
 			status: 0,
+			organizationId: "org-123",
 		});
 		expect(updated.updatedAt.getTime()).toBeGreaterThan(
 			created.updatedAt.getTime(),
@@ -85,20 +99,20 @@ describe("서버 리스트 조회", () => {
 
 	it("삭제 후 getById는 undefined 확인", async () => {
 		const created = first(
-			await create(db, {
+			await create(db, "org-123", {
 				hostname: "web-04",
 				ip: "10.0.0.4",
 				status: 1,
 			}),
 		);
-		const deleted = first(await remove(db, created.id));
+		const deleted = first(await remove(db, "org-123", created.id));
 
 		expect(deleted.id).toBe(created.id);
-		expect(await getById(db, created.id)).toBeUndefined();
+		expect(await getById(db, "org-123", created.id)).toBeUndefined();
 	});
 
 	it("없는 id update/remove 시 빈 배열", async () => {
-		expect(await update(db, 9999, { status: 0 })).toEqual([]);
-		expect(await remove(db, 9999)).toEqual([]);
+		expect(await update(db, "org-123", 9999, { status: 0 })).toEqual([]);
+		expect(await remove(db, "org-123", 9999)).toEqual([]);
 	});
 });

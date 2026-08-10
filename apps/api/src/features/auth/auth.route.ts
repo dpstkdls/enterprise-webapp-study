@@ -1,10 +1,10 @@
 import type { FastifyPluginAsync } from "fastify";
-import { createAuth } from "./auth";
 import { requireAdmin } from "./auth.guards";
 import { toWebHeaders } from "./auth.headers";
 
 export const authRoute: FastifyPluginAsync = async (fastify) => {
-	const auth = createAuth(fastify.db);
+	const auth = fastify.auth;
+
 	fastify.route({
 		method: ["GET", "POST"],
 		url: "/api/auth/*",

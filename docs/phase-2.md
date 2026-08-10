@@ -201,3 +201,27 @@ sequenceDiagram
 - **state_mismatch**: curl로 authorize URL 받아 브라우저에 붙여넣음 → sign-in/social 응답의 state **쿠키를 curl이 먹고 버림** → callback 브라우저에 쿠키 없음 → 거부. "URL 넘겨받아 여는" 행위가 구조적으로 login CSRF 공격과 구별 불가라 죽는 게 맞음. flow는 한 브라우저 안에서 시작·종료해야 함
 - **email_not_found**: GitHub **App**을 만들었음(OAuth App 아님). GitHub App은 scope 파라미터 무시하고 등록된 permission을 따르는데 기본 email 권한 없음 → 프로필 email null(private 설정) + /user/emails fallback도 거부. OAuth App으로 재등록해 해결
 - 로그인 성공 후 404: callbackURL "/"에 라우트 없음 — 에러 응답이 RFC 9457 규격 = better-auth 세계를 **벗어난 뒤**의 404라는 증거 (#60의 "에러 규격 2개 공존" 실물)
+
+### 2026-08-10 — 멀티테넌시: organization plugin + org 스코프 격리 (#62)
+
+**Q9 답 — 미들웨어 격리 vs 쿼리 격리, 각각의 사각지대:**
+
+- 두 층은 아는 것이 다름: 미들웨어는 세션("누가, 어느 org")만 알고 row의 소속은 모름. 쿼리는 row는 아는데 요청자를 스스로 확정 못 함
+- **미들웨어만**: `GET /servers/:id`에서 id가 남의 org 것인지 판단 불가(그 정보는 DB에) → IDOR 그대로. 목록은 row를 본 적이 없어 필터 불가. — 실제로 스텝 5까지만 하고 6을 빼먹은 중간 상태가 정확히 이 모습이었음: preHandler 통과 후 남의 server가 200으로 나옴
+- **쿼리만**: WHERE에 넣을 orgId를 만들어줄 층이 없음 → 핸들러마다 세션 파싱 복붙, 하나 빠지면 누수. 비로그인이 401 대신 빈 200/이상한 500으로 새어나감. 인가 실패의 단일 통제 지점 없음
+- 분업: **preHandler = "누가"를 확정해 신뢰 가능한 orgId를 request에 주입(401/403), WHERE = 그 orgId로 row 격리(мис스 → 404)**
+
+**구현 — cross-cutting concern의 배치:**
+
+- auth 인스턴스가 authRoute 안에 갇혀 있어 타 슬라이스가 못 씀 → `auth.plugin.ts`(fastify-plugin)로 `fastify.auth` 승격. fp 없이는 형제 플러그인에 decorator 안 보임(캡슐화) — `fastify.db`와 같은 패턴. 인스턴스 2개 상태로 두면 "가드의 auth ≠ 핸들러의 auth" 미궁 버그 씨앗
+- 격리 로직은 `requireOrg` 가드 하나(auth 슬라이스), servers 슬라이스에 남는 건 `addHook("preHandler", requireOrg(fastify.auth))` **한 줄** — "복붙 금지" 완료조건의 실현 방식
+- repository는 전 함수가 orgId를 받아 `and(eq(id), eq(organizationId))`. create는 orgId를 서버가 주입 — 클라이언트가 org를 지정하는 순간 격리가 아님
+- **404 vs 403**: 남의 org row에 403을 주면 "그 id 존재함"이 샘. WHERE로 거르면 기존 SERVER_NOT_FOUND 404가 그대로 재사용되며 존재 자체를 은폐. 삼분: 401(신원 없음)/403(org 미선택)/404(내 org에 그런 row 없음)
+- "org 소속"(member)과 "**활동 중** org"(session.activeOrganizationId)는 별개 — 멀티 org 유저 때문. set-active는 세션에 붙는 상태라 새 로그인엔 없음 → NO_ACTIVE_ORG 403으로 재현됨
+- 응답의 organizationId는 zod response 스키마에 없어서 serializer가 걸러줌 — 스키마 기반 직렬화의 부수 효과(허용 목록 방식)
+
+**막혔던 것:**
+
+- 기존 servers 테스트 전멸: FK 때문에 부모(organization) 행 없이 insert 불가 → beforeAll에 org 픽스처. **FK를 넣는 순간 자식 테이블 테스트는 부모 픽스처를 요구** — 격리 비용이 테스트에 전가됨. #63의 org 2개 격리 테스트 밑작업
+- swagger에 auth/* 안 보이는 이유 재확인: 캐치올 한 줄 + 스키마 없음, 라우팅은 better-auth 내장 라우터 몫. 필요하면 openAPI plugin이 /api/auth/reference 자체 서빙
+- orgId/ordId 오타 혼재 — 위치 기반 전달이라 동작은 했음. 이름이 반씩 다른 코드는 미래의 나를 속임

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
+import { requireOrg } from "../auth/auth.guards";
 import {
 	createServer,
 	getServer,
@@ -38,6 +39,8 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 	fastify,
 	_options,
 ) => {
+	fastify.addHook("preHandler", requireOrg(fastify.auth));
+
 	const db = fastify.db;
 
 	fastify.get(
@@ -49,7 +52,7 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 		},
 		async (request, _reply) => {
 			request.log.info("Get servers endpoint called");
-			return getServers(db);
+			return getServers(db, request.orgId);
 		},
 	);
 	fastify.get(
@@ -62,7 +65,7 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 		},
 		async (request, _reply) => {
 			request.log.info("Get server endpoint called");
-			return getServer(db, request.params.id);
+			return getServer(db, request.orgId, request.params.id);
 		},
 	);
 	fastify.post(
@@ -75,7 +78,7 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 		},
 		async (request, _reply) => {
 			request.log.info("Create server endpoint called");
-			return createServer(db, request.body);
+			return createServer(db, request.orgId, request.body);
 		},
 	);
 	fastify.patch(
@@ -89,7 +92,7 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 		},
 		async (request, _reply) => {
 			request.log.info("Update server endpoint called");
-			return updateServer(db, request.params.id, request.body);
+			return updateServer(db, request.orgId, request.params.id, request.body);
 		},
 	);
 	fastify.delete(
@@ -102,7 +105,7 @@ export const serversRoute: FastifyPluginAsyncZod = async (
 		},
 		async (request, _reply) => {
 			request.log.info("Delete server endpoint called");
-			return removeServer(db, request.params.id);
+			return removeServer(db, request.orgId, request.params.id);
 		},
 	);
 };
