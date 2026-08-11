@@ -17,6 +17,7 @@ beforeAll(async () => {
 	container = await new PostgreSqlContainer("postgres:17-alpine").start();
 	process.env.DATABASE_URL = container.getConnectionUri();
 	process.env.REDIS_URL = "redis://localhost:6379"; // 앱이 아직 redis 안 붙어서 더미로 충분
+	process.env.WEB_ORIGIN = "http://localhost:5173";
 
 	pool = new Pool({ connectionString: container.getConnectionUri() });
 	await migrate(drizzle(pool, { casing: "snake_case" }), {

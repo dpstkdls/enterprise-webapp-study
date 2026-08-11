@@ -10,6 +10,7 @@ import { authRoute } from "./features/auth/auth.route";
 import { healthRoute } from "./features/health/health.routes";
 import { serversRoute } from "./features/servers/servers.route";
 import configPlugin from "./infra/config";
+import corsPlugin from "./infra/cors";
 import connectDbPlugin from "./infra/db";
 import { AppErrorHandler, NotFoundErrorHandler } from "./infra/error-handler";
 import { loggerOptions } from "./infra/logger";
@@ -35,6 +36,7 @@ const buildApp = () => {
 	fastify.setNotFoundHandler(NotFoundErrorHandler);
 
 	fastify.register(configPlugin);
+	fastify.register(corsPlugin);
 	fastify.register(connectDbPlugin);
 	fastify.register(swaggerPlugin);
 	fastify.register(authPlugin);
