@@ -238,3 +238,25 @@ sequenceDiagram
   - 세션 vs JWT — 원리는 아나 우리 기능(ban/sliding/set-active = 전부 취소·변경 기능)과 연결 안 됨
   - 401/403/404 삼분 — 남의 org 리소스는 403이 아니라 404 (존재 은폐). 직접 재현하고도 틀림
 - 패턴: 손으로 한 건 다 됐는데 인출이 안 됨 — 관찰만 하고 지나간 주제일수록 심함. 로그 재독 필요
+
+### 2026-08-11 — 테스트: unit + integration (#63)
+
+**Q10 답 — 테스트 경계 (퀴즈 Q9에서 확정):**
+
+- 기준은 "auth 관련이냐"가 아니라 "**그 분기를 우리가 작성했나**". 우리 분기: isAccountExpired, requireOrg의 401/403, org 스코프 WHERE. 라이브러리 분기: scrypt 해싱, 429 rate limit, 세션 발급
+- 라이브러리 내부까지 테스트하면 **남의 구현에 내 CI가 인질** — 버전업마다 깨지는데 우리 버그가 아님. 신호 대 잡음 붕괴
+
+**작성한 것:**
+
+- unit: `isAccountExpired` (null=무기한, 경계 `<=` 포함 — 경계 테스트 없으면 `<`로 바뀌어도 아무도 모름) / `requireOrg` (getSession mock으로 401/403/orgId 주입 3분기)
+- integration: testcontainer + 실제 buildApp + `app.inject` — 가입→로그인 사이클, 비로그인 401/org 미선택 403, org 활성 후 CRUD, **org 격리(타 org 404 존재 은폐 + 빈 목록)**. 퀴즈에서 틀린 삼분 의미론이 이제 테스트로 박제됨
+
+**막혔던 것 (수확 많았음):**
+
+- env 검증 실패: vitest는 .env를 안 읽음 + `@ews/shared`가 **import 시점에** zod 검증 → 테스트가 자기 env를 스스로 구성(컨테이너 URI + 더미 REDIS_URL) 후 **동적 import**로 앱 로드. CI엔 .env가 없으니 이 방식이어야 로컬/CI 동일
+- `await authedInject(...).statusCode` — await가 프로퍼티 접근에 밀려 Promise의 statusCode(=undefined)를 await함. "undefined to be 200"은 await 실수의 시그니처. 중간 변수로 받으면 이 버그 계급이 소멸
+- 단언 실패 → afterAll이 app.close() → **날아가던 요청이 닫힌 pool을 침** — 에러 폭포의 근원은 항상 첫 에러
+- `.rejects`는 unit용(함수 직접 호출, throw 관찰). integration에선 전역 에러 핸들러가 AppError를 **이미 HTTP 응답으로 변환** — inject는 reject 안 함, statusCode/body를 단언. 같은 AppError를 경계 안/밖 어디서 보느냐의 차이
+- `Parameters<F>[0]`는 오버로드 함수에서 마지막 오버로드만 집어 never가 될 수 있음 — 라이브러리가 export하는 옵션 타입(InjectOptions)을 직접 쓰는 게 정석
+- 부수 발견: `organization/create`는 활성 org 없으면 자동으로 active 설정함 — 단 테스트는 이 암묵 동작에 기대지 않고 set-active 명시
+- 정리 원칙: 반복 flow는 헬퍼로, 거대 단일 it은 관심사별로 분할 — **실패 시 테스트 이름이 곧 진단**이 되게

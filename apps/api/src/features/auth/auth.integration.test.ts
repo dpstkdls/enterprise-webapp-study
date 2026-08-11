@@ -1,15 +1,16 @@
 import type { StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+const PASSWORD = "password123";
+const ORIGIN = "http://localhost:80";
+
 let container: StartedPostgreSqlContainer;
 let pool: Pool;
-let db: NodePgDatabase<Record<string, unknown>>;
 let app: FastifyInstance;
 
 beforeAll(async () => {
@@ -18,8 +19,9 @@ beforeAll(async () => {
 	process.env.REDIS_URL = "redis://localhost:6379"; // 앱이 아직 redis 안 붙어서 더미로 충분
 
 	pool = new Pool({ connectionString: container.getConnectionUri() });
-	db = drizzle(pool, { casing: "snake_case" });
-	await migrate(db, { migrationsFolder: "./drizzle" });
+	await migrate(drizzle(pool, { casing: "snake_case" }), {
+		migrationsFolder: "./drizzle",
+	});
 
 	const { default: buildApp } = await import("../../app"); // env 세팅 후 import
 	app = buildApp();
@@ -38,146 +40,99 @@ const cookieOf = (res: { cookies: { name: string; value: string }[] }) =>
 const authedInject = (cookie: string, opts: InjectOptions) =>
 	app.inject({
 		...opts,
-		headers: {
-			Cookie: cookie,
-			Origin: "http://localhost:80",
-			...opts.headers,
-		},
+		headers: { Cookie: cookie, Origin: ORIGIN, ...opts.headers },
 	});
 
-describe("인증 통합 테스트", () => {
-	it("전체 흐름", async () => {
-		// 계정 생성
-		const signUpResponse = await app.inject({
-			url: "/api/auth/sign-up/email",
-			method: "POST",
-			body: {
-				name: "Test User",
-				email: "user-test@example.com",
-				password: "password123",
-			},
-			headers: {
-				Accept: "application/json",
-			},
-		});
+const signUp = async (email: string, name: string) => {
+	const res = await app.inject({
+		url: "/api/auth/sign-up/email",
+		method: "POST",
+		body: { name, email, password: PASSWORD },
+	});
+	expect(res.statusCode).toBe(200);
+};
 
-		expect(signUpResponse.statusCode).toBe(200);
+const signIn = async (email: string) => {
+	const res = await app.inject({
+		url: "/api/auth/sign-in/email",
+		method: "POST",
+		body: { email, password: PASSWORD },
+	});
+	expect(res.statusCode).toBe(200);
+	return cookieOf(res);
+};
 
-		// cookie 없이 GET /servers 요청 시 401
-		const serverResponse = await app.inject({
-			url: "/servers",
-			method: "GET",
-		});
+const createActiveOrg = async (cookie: string, name: string, slug: string) => {
+	const created = await authedInject(cookie, {
+		url: "/api/auth/organization/create",
+		method: "POST",
+		body: { name, slug },
+	});
+	expect(created.statusCode).toBe(200);
 
-		expect(serverResponse.statusCode).toBe(401);
+	const activated = await authedInject(cookie, {
+		url: "/api/auth/organization/set-active",
+		method: "POST",
+		body: { organizationSlug: slug },
+	});
+	expect(activated.statusCode).toBe(200);
+};
 
-		// 로그인
-		const signInResponse = await app.inject({
-			url: "/api/auth/sign-in/email",
-			method: "POST",
-			body: {
-				email: "user-test@example.com",
-				password: "password123",
-			},
-			headers: {
-				Accept: "application/json",
-			},
-		});
+describe("인증 통합", () => {
+	let cookieA: string;
+	let cookieB: string;
+	let serverAId: number;
 
-		const cookieA = cookieOf(signInResponse);
-		expect(signInResponse.statusCode).toBe(200);
+	it("가입→로그인 사이클로 세션 쿠키를 얻는다", async () => {
+		await signUp("user-a@example.com", "User A");
+		cookieA = await signIn("user-a@example.com");
+		expect(cookieA).toContain("better-auth.session_token");
+	});
 
-		// cookie있고 org 없이 GET /servers 요청 시 403 (NO_ACTIVE_ORG)
-		const noOrgResponse = await app.inject({
+	it("보호 라우트: 비로그인 401, active org 없으면 403", async () => {
+		const anonymous = await app.inject({ url: "/servers", method: "GET" });
+		expect(anonymous.statusCode).toBe(401);
+
+		const noOrg = await app.inject({
 			url: "/servers",
 			method: "GET",
 			headers: { Cookie: cookieA },
 		});
-		expect(noOrgResponse.statusCode).toBe(403);
-		expect(noOrgResponse.json()).toMatchObject({ code: "NO_ACTIVE_ORG" });
+		expect(noOrg.statusCode).toBe(403);
+		expect(noOrg.json()).toMatchObject({ code: "NO_ACTIVE_ORG" });
+	});
 
-		// org 생성
-		const orgCreateResponse = await authedInject(cookieA, {
-			url: "/api/auth/organization/create",
-			method: "POST",
-			body: {
-				name: "Test Organization",
-				slug: "test-org",
-			},
-		});
+	it("org 활성화 후 server CRUD가 열린다", async () => {
+		await createActiveOrg(cookieA, "Org A", "org-a");
 
-		expect(orgCreateResponse.statusCode).toBe(200);
-
-		const setActiveA = await authedInject(cookieA, {
-			url: "/api/auth/organization/set-active",
-			method: "POST",
-			body: { organizationSlug: "test-org" },
-		});
-
-		expect(setActiveA.statusCode).toBe(200);
-
-		// cookie와 org 모두 있는 상태에서 GET /servers 요청 시 200
-		const serverCreateResponse = await authedInject(cookieA, {
+		const created = await authedInject(cookieA, {
 			url: "/servers",
 			method: "POST",
-			body: {
-				hostname: "web-01",
-				ip: "10.0.0.1",
-				status: 1,
-			},
+			body: { hostname: "web-01", ip: "10.0.0.1", status: 1 },
 		});
-		expect(serverCreateResponse.statusCode).toBe(200);
+		expect(created.statusCode).toBe(200);
+		serverAId = created.json().id;
 
-		// User B 생성
-		const userBCreateResponse = await app.inject({
-			url: "/api/auth/sign-up/email",
-			method: "POST",
-			body: {
-				name: "User B",
-				email: "user-b@example.com",
-				password: "password123",
-			},
-			headers: {
-				Accept: "application/json",
-			},
-		});
-		expect(userBCreateResponse.statusCode).toBe(200);
-
-		// user B로 로그인
-		const signInBResponse = await app.inject({
-			url: "/api/auth/sign-in/email",
-			method: "POST",
-			body: {
-				email: "user-b@example.com",
-				password: "password123",
-			},
-			headers: {
-				Accept: "application/json",
-			},
-		});
-		expect(signInBResponse.statusCode).toBe(200);
-		const cookieB = cookieOf(signInBResponse);
-
-		// org B 생성
-		const orgBCreateResponse = await authedInject(cookieB, {
-			url: "/api/auth/organization/create",
-			method: "POST",
-			body: {
-				name: "Organization B",
-				slug: "org-b",
-			},
-		});
-		expect(orgBCreateResponse.statusCode).toBe(200);
-
-		// user B로 org A의 서버에 접근 시 404
-		const userAServer = await authedInject(cookieB, {
-			url: `/servers/${serverCreateResponse.json().id}`, // org A의 서버 ID
+		const found = await authedInject(cookieA, {
+			url: `/servers/${serverAId}`,
 			method: "GET",
 		});
-		expect(userAServer.statusCode).toBe(404);
+		expect(found.statusCode).toBe(200);
+	});
+
+	it("org 격리: 타 org의 server는 404(존재 은폐), 목록에서도 안 보인다", async () => {
+		await signUp("user-b@example.com", "User B");
+		cookieB = await signIn("user-b@example.com");
+		await createActiveOrg(cookieB, "Org B", "org-b");
+
+		const crossOrg = await authedInject(cookieB, {
+			url: `/servers/${serverAId}`,
+			method: "GET",
+		});
+		expect(crossOrg.statusCode).toBe(404);
 
 		const listB = await authedInject(cookieB, {
-			url: `/servers`, // org A의 서버 ID
+			url: "/servers",
 			method: "GET",
 		});
 		expect(listB.statusCode).toBe(200);
