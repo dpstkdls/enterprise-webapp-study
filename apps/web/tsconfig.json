@@ -3,5 +3,9 @@
 	"references": [
 		{ "path": "./tsconfig.app.json" },
 		{ "path": "./tsconfig.node.json" }
-	]
+	],
+	// shadcn CLI 전용 힌트 — CLI가 solution tsconfig만 읽음. 실제 컴파일은 tsconfig.app.json
+	"compilerOptions": {
+		"paths": { "@/*": ["./src/*"] }
+	}
 }
