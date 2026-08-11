@@ -11,6 +11,9 @@ export const createAuth = (db: NodePgDatabase<Record<string, unknown>>) =>
 	betterAuth({
 		database: drizzleAdapter(db, { provider: "pg", schema: authSchema }),
 		emailAndPassword: { enabled: true },
+		// ponytail: dev origin 하드코딩 — env 분리는 #84 cross-origin에서
+		trustedOrigins: ["http://localhost:5173"],
+
 		// dev는 기본 비활성. sign-in/sign-up 등엔 내장 특수 규칙(10초/3회)이 적용된다.
 		rateLimit: { enabled: true },
 		plugins: [admin(), organization()],
