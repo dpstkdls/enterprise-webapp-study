@@ -62,3 +62,19 @@ OpenAPI codegen의 보장 범위, 컴포넌트 테스트 범위와 MSW mock의 �
 ## 학습 로그
 
 <!-- 배운 것 / 막혔던 것 / 퀴즈 결과 -->
+
+### #84 cross-origin 정면 돌파 (2026-08-11)
+
+깨진 것 → 원인 → 고친 것:
+
+1. **proxy 제거 직후**: preflight OPTIONS가 404 → 브라우저가 본 요청(POST sign-in)을 보내지도 않음. 서버에 OPTIONS 핸들러가 없어서. → `@fastify/cors` 등록 (OPTIONS 자동 응답 + `Access-Control-Allow-*` 부착)
+2. **Invalid origin 403 (better-auth)**: `.env`에 `WEB_ORIGIN=http://127.0.0.1:5173`로 오타 — origin 비교는 DNS 해석 없는 문자열 비교라 localhost ≠ 127.0.0.1. → localhost로 수정
+3. **trustedOrigins가 [undefined]**: `createAuth` 시그니처에 webOrigin 추가했는데 `auth.plugin.ts` 호출부를 안 고침. tsx는 타입 검사 없이 실행해서 런타임까지 조용히 통과 — typecheck 돌렸으면 즉시 잡혔음. → 호출부 수정. "돌아간다 ≠ 타입이 맞다"
+
+핵심 정리:
+
+- **CORS는 origin 기준(scheme+host+port), 쿠키 sameSite는 site 기준(eTLD+1, 포트 무시)** — 그래서 5173↔3000은 CORS 벽은 만나지만 쿠키 벽은 안 만남. 도메인이 갈리면 쿠키 벽(sameSite=none+secure)까지 등판
+- preflight는 "form이 원래 못 만들던 모양"의 요청에만 발생 — `Content-Type: application/json` POST 포함
+- `credentials: "include"`면 `Access-Control-Allow-Origin: *` 금지, 정확한 origin + `Allow-Credentials: true` 필요
+- CORS(브라우저가 집행)와 better-auth Origin 검증(서버가 집행)은 서로 다른 층 — proxy 시절에도 Origin 헤더는 5173 그대로였음(proxy는 Origin을 안 속임)
+- better-auth 클라이언트는 credentials 기본 include, openapi-fetch는 기본 same-origin이라 명시 필요

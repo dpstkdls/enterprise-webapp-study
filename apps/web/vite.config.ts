@@ -7,9 +7,5 @@ export default defineConfig({
 		tanstackRouter({ target: "react", autoCodeSplitting: true }),
 		react(),
 	],
-	server: {
-		proxy: {
-			"/api": "http://localhost:3000",
-		},
-	},
+	envDir: "../../",
 });

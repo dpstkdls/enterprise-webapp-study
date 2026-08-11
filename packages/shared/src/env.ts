@@ -3,6 +3,7 @@ import { z } from "zod";
 const EnvSchema = z.object({
 	DATABASE_URL: z.url(),
 	REDIS_URL: z.url(),
+	WEB_ORIGIN: z.url(),
 });
 
 const result = EnvSchema.safeParse(process.env);

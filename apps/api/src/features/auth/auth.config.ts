@@ -6,4 +6,5 @@ process.loadEnvFile("../../.env");
 
 export const auth = createAuth(
 	drizzle(process.env.DATABASE_URL as string, { casing: "snake_case" }),
+	process.env.WEB_ORIGIN as string,
 );
