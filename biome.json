@@ -7,7 +7,14 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!**/*.svg", "!apps/api/drizzle", "!**/routeTree.gen.ts"]
+		"includes": [
+			"**",
+			"!**/*.svg",
+			"!apps/api/drizzle",
+			"!**/routeTree.gen.ts",
+			"!apps/web/src/shared/api/schema.ts",
+			"!apps/web/openapi.json"
+		]
 	},
 	"formatter": {
 		"enabled": true,

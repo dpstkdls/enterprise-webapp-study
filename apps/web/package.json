@@ -7,11 +7,15 @@
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
-		"typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json"
+		"typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+		"openapi:export": "node scripts/export-openapi.mjs",
+		"openapi:generate": "openapi-typescript openapi.json -o src/shared/api/schema.ts",
+		"codegen": "pnpm openapi:export && pnpm openapi:generate"
 	},
 	"dependencies": {
 		"@tanstack/react-query": "^5.101.4",
 		"@tanstack/react-router": "^1.170.25",
+		"openapi-fetch": "^0.17.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"react-router-dom": "^7.18.2"
@@ -26,6 +30,7 @@
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.4",
 		"@vitejs/plugin-react": "^6.0.5",
+		"openapi-typescript": "^7.13.0",
 		"typescript": "~6.0.2",
 		"vite": "^8.2.0"
 	}
