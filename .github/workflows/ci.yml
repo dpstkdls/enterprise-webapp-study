@@ -27,3 +27,8 @@ jobs:
       - run: pnpm test
 
       - run: pnpm build
+
+      - name: codegen freshness check
+        run: |
+          pnpm --filter @ews/web openapi:generate
+          git diff --exit-code apps/web/src/shared/api/schema.ts
