@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { authClient } from "./auth.client";
 
@@ -33,11 +34,18 @@ export function LoginForm() {
 					<form onSubmit={onSubmit} className="flex flex-col gap-4">
 						<div className="flex flex-col gap-2">
 							<Label htmlFor="email">이메일</Label>
-							<input name="email" type="email" placeholder="이메일" required />
+							<Input
+								id="email"
+								name="email"
+								type="email"
+								placeholder="이메일"
+								required
+							/>
 						</div>
 						<div className="flex flex-col gap-2">
 							<Label htmlFor="password">비밀번호</Label>
-							<input
+							<Input
+								id="password"
 								name="password"
 								type="password"
 								placeholder="비밀번호"
