@@ -10,7 +10,8 @@
 		"typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
 		"openapi:export": "node scripts/export-openapi.mjs",
 		"openapi:generate": "openapi-typescript openapi.json -o src/shared/api/schema.ts",
-		"codegen": "pnpm openapi:export && pnpm openapi:generate"
+		"codegen": "pnpm openapi:export && pnpm openapi:generate",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.7.0",
@@ -36,12 +37,18 @@
 		"@tanstack/react-query-devtools": "^5.101.4",
 		"@tanstack/react-router-devtools": "^1.167.1",
 		"@tanstack/router-plugin": "^1.168.29",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.2",
+		"@testing-library/user-event": "^14.6.3",
 		"@types/node": "^24.13.2",
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.4",
 		"@vitejs/plugin-react": "^6.0.5",
+		"jsdom": "^30.0.1",
+		"msw": "^2.15.0",
 		"openapi-typescript": "^7.13.0",
 		"typescript": "~6.0.2",
-		"vite": "^8.2.0"
+		"vite": "^8.2.0",
+		"vitest": "^4.1.10"
 	}
 }
