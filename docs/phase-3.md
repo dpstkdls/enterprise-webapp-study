@@ -78,3 +78,29 @@ OpenAPI codegen의 보장 범위, 컴포넌트 테스트 범위와 MSW mock의 �
 - `credentials: "include"`면 `Access-Control-Allow-Origin: *` 금지, 정확한 origin + `Allow-Credentials: true` 필요
 - CORS(브라우저가 집행)와 better-auth Origin 검증(서버가 집행)은 서로 다른 층 — proxy 시절에도 Origin 헤더는 5173 그대로였음(proxy는 Origin을 안 속임)
 - better-auth 클라이언트는 credentials 기본 include, openapi-fetch는 기본 same-origin이라 명시 필요
+
+### Phase 3 마감 (2026-08-12, #81~#89 / PR #90~#97)
+
+완료 기준 점검:
+
+- ✅ 별도 포트 프론트에서 로그인→org 전환→서버 목록 CRUD (servers 슬라이스 DB→API→UI 관통, #86에서 시연)
+- ✅ API 스키마 변경이 프론트 컴파일 에러로 잡힘 (#82 파괴 실험 + #87 typed mock)
+- ✅ 프론트 테스트 9개가 실서버 없이(MSW) 통과, CI 편입 (#87, #88)
+- ✅ 백엔드/프론트 `features/servers` 기능 경계 일치 (route/service/repository ↔ api/queries)
+
+회차별 삽질 하이라이트:
+
+- #85: shadcn CLI는 solution tsconfig.json의 paths만 읽음(안 주면 문자 그대로 `@/` 폴더 생성), TS 6은 baseUrl 퇴역, biome은 `css.parser.tailwindDirectives` 필요
+- #86: shadcn(base-nova)은 Radix 아닌 Base UI — 합성은 `asChild` 아닌 `render` prop. 활성 org는 클라 상태가 아니라 세션(DB) 상태
+- #87: MSW `server.listen`은 setup 최상단(better-fetch가 import 시점에 fetch 캡처), RTL cleanup은 globals:true 전용이라 수동 등록, "서버 검증 실패" 테스트 입력은 브라우저 검증은 통과해야 함. **role/label 쿼리가 LoginForm 라벨-입력 연결 누락(실제 접근성 버그)을 잡음**
+- #88: turbo 모노레포는 패키지에 스크립트만 생기면 CI 자동 편입. codegen freshness는 `재생성 + git diff --exit-code`
+
+퀴즈 결과: **평균 6.2/10 (7문제)** — 7할 미만. 재퀴즈는 본인 선택으로 생략, 약점 5개를 Phase 4 시작 시 복습 대상으로 이월.
+
+## 복습 노트 (퀴즈 약점 5)
+
+1. **origin vs site** — origin = scheme+host+port **전부 문자열 일치** (서브도메인·포트 달라도 남). site = scheme + 등록도메인(eTLD+1) — schemeful이라 http↔https도 남. 판정: CORS·fetch credentials는 origin 기준, 쿠키 sameSite는 site 기준. `app.example.com↔api.example.com` = cross-origin이지만 same-site → 쿠키는 붙되(단 `credentials: "include"` 필요) CORS는 필요
+2. **XSS: 탈취 vs 도용** (Phase 2부터 2회 이월) — 기준 문장: **"공격이 피해자 브라우저를 벗어날 수 있는가."** localStorage 토큰 = 반출되어 공격자 PC에서 재사용(탈취). httpOnly 쿠키 = 반출 불가, 피해자 브라우저 안에서 스크립트 수명 동안만 도용
+3. **simple request** — "1997년 form/img가 만들 수 있던 모양은 preflight 없이 그냥 나간다." 단순 GET·form POST는 서버에 **도달한다** (응답 열람만 차단) — CSRF가 성립하는 이유. json POST·커스텀 헤더·PUT/DELETE만 OPTIONS 선행
+4. **Query 재조회는 타이머가 아니라 트리거** — staleTime은 "트리거가 왔을 때 다시 가져올지"의 판정값일 뿐. 트리거 = 리포커스·리마운트·키 변경·invalidate. mutation 후 invalidate 안 하면 다음 우연한 트리거까지 옛 데이터
+5. **파이프라인이 못 잡는 구멍** — ① zod 소스↔openapi.json 드리프트 (export가 수동·서버 필요, CI freshness는 openapi.json↔schema.ts만 비교) ② 네트워크 층 전체 (CORS·trustedOrigins·쿠키 — MSW가 통째로 우회) ③ 배포 스큐 (타입은 codegen 시점 스냅샷). 자동화가 안 잡는 목록을 아는 것까지가 도구 이해
