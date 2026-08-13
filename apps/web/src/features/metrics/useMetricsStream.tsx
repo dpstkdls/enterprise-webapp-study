@@ -27,7 +27,7 @@ export function useMetricsStream(orgId: string | undefined) {
 			socket.onmessage = (e) => {
 				const msg = JSON.parse(e.data);
 				if (msg.type !== "metric") return;
-				setPoints((prev) => [...prev.slice(-MAX_POINTS - 1), msg.data]);
+				setPoints((prev) => [...prev.slice(-(MAX_POINTS - 1)), msg.data]);
 			};
 			socket.onclose = () => {
 				if (!disposed) retry = window.setTimeout(connect, 3000);
