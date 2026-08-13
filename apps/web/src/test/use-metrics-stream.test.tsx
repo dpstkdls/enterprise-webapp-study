@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { useMetricsStream } from "@/features/metrics/useMetricsStream";
 
 const socket = () =>
-	(WebSocket as unknown as { last: { onmessage: ((e: { data: string }) => void) | null }}).last;
+	(
+		WebSocket as unknown as {
+			last: { onmessage: ((e: { data: string }) => void) | null };
+		}
+	).last;
 
 const frame = (id: number) => ({
 	data: JSON.stringify({
