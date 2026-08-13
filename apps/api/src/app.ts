@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
@@ -41,6 +42,7 @@ const buildApp = () => {
 	fastify.register(connectDbPlugin);
 	fastify.register(swaggerPlugin);
 	fastify.register(authPlugin);
+	fastify.register(websocket);
 
 	fastify.register(healthRoute);
 	fastify.register(authRoute);

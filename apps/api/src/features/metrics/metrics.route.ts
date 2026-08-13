@@ -1,7 +1,10 @@
+import type { WebSocket } from "@fastify/websocket";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 import { requireOrg } from "../auth/auth.guards";
+import { toWebHeaders } from "../auth/auth.headers";
 import { getRecent, insertMetrics } from "./metrics.service";
+import { subscribe } from "./metrics.stream";
 
 const ingestBody = z.object({
 	serverId: z.coerce.number(),
@@ -50,6 +53,21 @@ export const metricsRoute: FastifyPluginAsyncZod = async (
 		async (request, reply) => {
 			const created = await insertMetrics(db, request.orgId, request.body);
 			return reply.code(201).send(created);
+		},
+	);
+	fastify.get(
+		"/metrics/stream",
+		{ websocket: true },
+		(socket: WebSocket, request) => {
+			subscribe(request.orgId, socket);
+
+			const interval = setInterval(async () => {
+				const session = await fastify.auth.api.getSession({
+					headers: toWebHeaders(request),
+				});
+				if (!session) socket.close(4001, "session expired");
+			}, 60_000);
+			socket.on("close", () => clearInterval(interval));
 		},
 	);
 };
