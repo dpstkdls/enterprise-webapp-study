@@ -10,10 +10,14 @@ server.listen({ onUnhandledRequest: "error" });
 // MSW는 WebSocket을 안 가로챈다 — useMetricsStream이 테스트에서 진짜 연결을
 // 시도하면 CI 타이밍에 따라 error 이벤트가 새는 플레이키. 무해한 스텁으로 교체
 class StubWebSocket {
+	static last: StubWebSocket | null = null;
 	onopen: ((e: unknown) => void) | null = null;
 	onmessage: ((e: unknown) => void) | null = null;
 	onclose: ((e: unknown) => void) | null = null;
 	onerror: ((e: unknown) => void) | null = null;
+	constructor() {
+		StubWebSocket.last = this;
+	}
 	send() {}
 	close() {}
 }
