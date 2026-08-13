@@ -31,8 +31,8 @@ describe("useMetricsStream", () => {
 		});
 
 		expect(result.current).toHaveLength(60);
-		expect(result.current[0].id).toBe(11);
-		expect(result.current[59].id).toBe(70);
+		expect(result.current[0]?.id).toBe(11);
+		expect(result.current[59]?.id).toBe(70);
 	});
 
 	it("metric 외 타입은 무시한다.", () => {
