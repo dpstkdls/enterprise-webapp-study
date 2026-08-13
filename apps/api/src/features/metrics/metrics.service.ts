@@ -2,6 +2,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { AppError } from "../../infra/errors";
 import { getServer } from "../servers/servers.service";
 import { findRecentByOrg, insertMetric } from "./metrics.repository";
+import { broadcast } from "./metrics.stream";
 
 const serialize = <T extends { createdAt: Date }>(row: T) => ({
 	...row,
@@ -18,7 +19,10 @@ export const insertMetrics = async (
 	if (!createdMetric) {
 		throw new AppError(500, "INSERT_FAILED", "Insert returned no rows");
 	}
-	return serialize(createdMetric);
+	const serialized = serialize(createdMetric);
+
+	broadcast(orgId, { type: "metric", data: serialized });
+	return serialized;
 };
 
 export const getRecent = async (
