@@ -8,6 +8,7 @@ import {
 import authPlugin from "./features/auth/auth.plugin";
 import { authRoute } from "./features/auth/auth.route";
 import { healthRoute } from "./features/health/health.routes";
+import { metricsRoute } from "./features/metrics/metrics.route";
 import { serversRoute } from "./features/servers/servers.route";
 import configPlugin from "./infra/config";
 import corsPlugin from "./infra/cors";
@@ -44,6 +45,7 @@ const buildApp = () => {
 	fastify.register(healthRoute);
 	fastify.register(authRoute);
 	fastify.register(serversRoute);
+	fastify.register(metricsRoute);
 	return fastify;
 };
 
