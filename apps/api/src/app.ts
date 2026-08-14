@@ -16,6 +16,7 @@ import corsPlugin from "./infra/cors";
 import connectDbPlugin from "./infra/db";
 import { AppErrorHandler, NotFoundErrorHandler } from "./infra/error-handler";
 import { loggerOptions } from "./infra/logger";
+import queuePlugin from "./infra/queue";
 import swaggerPlugin from "./infra/swagger";
 
 const buildApp = () => {
@@ -42,6 +43,7 @@ const buildApp = () => {
 	fastify.register(connectDbPlugin);
 	fastify.register(swaggerPlugin);
 	fastify.register(authPlugin);
+	fastify.register(queuePlugin);
 	fastify.register(websocket);
 
 	fastify.register(healthRoute);
