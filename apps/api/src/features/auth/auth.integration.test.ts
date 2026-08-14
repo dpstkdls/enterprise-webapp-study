@@ -4,19 +4,25 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { Pool } from "pg";
+import { GenericContainer, type StartedTestContainer } from "testcontainers";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const PASSWORD = "password123";
 const ORIGIN = "http://localhost:80";
 
 let container: StartedPostgreSqlContainer;
+let redis: StartedTestContainer;
 let pool: Pool;
 let app: FastifyInstance;
 
 beforeAll(async () => {
 	container = await new PostgreSqlContainer("postgres:17-alpine").start();
 	process.env.DATABASE_URL = container.getConnectionUri();
-	process.env.REDIS_URL = "redis://localhost:6379"; // 앱이 아직 redis 안 붙어서 더미로 충분
+	// queuePlugin(BullMQ)이 ready 시점에 실접속 — 더미 URL이면 CI(redis 없음)에서 plugin timeout
+	redis = await new GenericContainer("redis:8-alpine")
+		.withExposedPorts(6379)
+		.start();
+	process.env.REDIS_URL = `redis://${redis.getHost()}:${redis.getMappedPort(6379)}`;
 	process.env.WEB_ORIGIN = "http://localhost:5173";
 
 	pool = new Pool({ connectionString: container.getConnectionUri() });
@@ -33,6 +39,7 @@ afterAll(async () => {
 	await app?.close();
 	await pool?.end();
 	await container?.stop();
+	await redis?.stop();
 });
 
 const cookieOf = (res: { cookies: { name: string; value: string }[] }) =>
