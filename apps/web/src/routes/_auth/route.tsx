@@ -46,6 +46,12 @@ function DashboardLayout() {
 					>
 						서버
 					</Link>
+					<Link
+						to="/alert-rules"
+						className="rounded px-2 hover:bg-accent [&.active]:bg-accent [&.active]:font-medium"
+					>
+						알림
+					</Link>
 				</nav>
 			</aside>
 			<div className="flex flex-1 flex-col">

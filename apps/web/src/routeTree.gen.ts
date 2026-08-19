@@ -13,6 +13,7 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AuthIndexRouteImport } from './routes/_auth/index'
+import { Route as AuthAlertRulesRouteImport } from './routes/_auth/alert-rules'
 import { Route as AuthServersRouteImport } from './routes/_auth/servers'
 
 const AuthRouteRoute = AuthRouteRouteImport.update({
@@ -34,6 +35,11 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const AuthAlertRulesRoute = AuthAlertRulesRouteImport.update({
+  id: '/alert-rules',
+  path: '/alert-rules',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
 const AuthServersRoute = AuthServersRouteImport.update({
   id: '/servers',
   path: '/servers',
@@ -44,11 +50,13 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthIndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/alert-rules': typeof AuthAlertRulesRoute
   '/servers': typeof AuthServersRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/alert-rules': typeof AuthAlertRulesRoute
   '/servers': typeof AuthServersRoute
   '/': typeof AuthIndexRoute
 }
@@ -57,16 +65,23 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_auth/alert-rules': typeof AuthAlertRulesRoute
   '/_auth/servers': typeof AuthServersRoute
   '/_auth/': typeof AuthIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/servers'
+  fullPaths: '/' | '/login' | '/signup' | '/alert-rules' | '/servers'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/signup' | '/servers' | '/'
+  to: '/login' | '/signup' | '/alert-rules' | '/servers' | '/'
   id:
-    '__root__' | '/_auth' | '/login' | '/signup' | '/_auth/servers' | '/_auth/'
+    | '__root__'
+    | '/_auth'
+    | '/login'
+    | '/signup'
+    | '/_auth/alert-rules'
+    | '/_auth/servers'
+    | '/_auth/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthIndexRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_auth/alert-rules': {
+      id: '/_auth/alert-rules'
+      path: '/alert-rules'
+      fullPath: '/alert-rules'
+      preLoaderRoute: typeof AuthAlertRulesRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
     '/_auth/servers': {
       id: '/_auth/servers'
       path: '/servers'
@@ -116,11 +138,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthRouteRouteChildren {
+  AuthAlertRulesRoute: typeof AuthAlertRulesRoute
   AuthServersRoute: typeof AuthServersRoute
   AuthIndexRoute: typeof AuthIndexRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthAlertRulesRoute: AuthAlertRulesRoute,
   AuthServersRoute: AuthServersRoute,
   AuthIndexRoute: AuthIndexRoute,
 }

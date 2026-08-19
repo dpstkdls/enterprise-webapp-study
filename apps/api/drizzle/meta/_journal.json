@@ -57,6 +57,13 @@
       "when": 1786606797017,
       "tag": "0007_illegal_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787029752146,
+      "tag": "0008_talented_avengers",
+      "breakpoints": true
     }
   ]
 }
